@@ -138,4 +138,4 @@ for target_id, label in id_map.items():
 
     with st.container(height=250):
         for _, row in filtered_df.iterrows():
-            st.markdown(f"🕒 `{row['time']}` : {row['message']}")
+            st.markdown(f"`{row['time']}` : {row['message']}")
