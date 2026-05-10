@@ -130,7 +130,7 @@ df = st.session_state.last_df
 with st.sidebar:
     st.header("🔍 表示フィルタ")
     # text_inputの値を直接使わず、一度変数に受ける
-    input_val = st.text_input("キーワード入力", placeholder="銘柄コード、銘柄名など", value=st.session_state.filter_query, key="text_input_filter")
+    input_val = st.text_input("キーワード入力", placeholder="銘柄コード、銘柄名など", key="text_input_filter")
     
     if st.button("フィルタ適用"):
         st.session_state.filter_query = input_val
