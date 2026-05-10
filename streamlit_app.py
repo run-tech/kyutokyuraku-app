@@ -5,18 +5,24 @@ from datetime import datetime
 import pytz
 from io import StringIO
 import pandas as pd
+import pickle
 
-CASH_FILE = "19RT1ZT3nLrFLWi7BO89lV_URauXbfIxo" # cash_local_data.pkl
+CACHE_FILE = "19RT1ZT3nLrFLWi7BO89lV_URauXbfIxo" # cache_local_data.pkl
 LOG_FILE = "1eJJ5CeH676xaBl8YMPZmEsb1-1tuwRdM" # kyutokyuraku.log
 
 # =========================================================
-# GoogleDocumentからファイル取得
+# 指定したGoogleDocumentのファイルをダウンロード
 # =========================================================
-def get_gd_file(file_id):
-    # 指定したGoogleDocumentのファイルをダウンロード
+def get_gd_data(file_id):
     url = f"https://drive.google.com/uc?id={file_id}&export=download"
-    # データを取得
-    response = requests.get(url)
+    # データを返却
+    return requests.get(url)
+    
+# =========================================================
+# ログファイル取得
+# =========================================================
+def get_log_file(file_id):
+    response = get_gd_data(file_id)
     
     # レスポンスが正常か確認
     if response.status_code == 200:
@@ -41,6 +47,27 @@ def get_gd_file(file_id):
         raise Exception(f"ファイルの取得に失敗しました。ステータスコード: {response.status_code}")
 
 # =========================================================
+# GoogleDocumentからキャッシュファイル取得
+# =========================================================
+def get_cache_file(file_id):
+    response = get_gd_data(file_id)
+    
+    if response.status_code == 200:
+        # pickle.loads でバイナリデータを辞書に変換
+        data = pickle.loads(response.content)
+        
+        # 銘柄コードを抽出
+        codes = []
+        for i in range(1, 201):
+            code = data.get(i, {}).get("code", "")
+            # 空文字でない、かつ初期値やダミーでないものを追加
+            if code and code != "":
+                codes.append(code)
+        return codes
+    else:
+        return []
+
+# =========================================================
 # スタイルシート（css）
 # =========================================================
 st.markdown("""
@@ -58,19 +85,20 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-
 # =========================================================
 # GUI メイン画面
 # =========================================================
-# --- セッション状態の初期化 (ここを st.title の上に追加) ---
+# --- セッション状態の初期化 ---
 if "filter_query" not in st.session_state:
     st.session_state.filter_query = ""
 if "last_df" not in st.session_state:
     # 最初の読み込みで失敗してもエラーにならないよう空のDataFrameを作っておく
     st.session_state.last_df = pd.DataFrame(columns=['id', 'time', 'message'])
 
-st.title(":chart: 株価情報モニター（お試し）")
+# --- タイトル ---
+st.title(":chart: 株価情報モニタ（仮）")
 
+# --- 変数 ---
 reload_interval = 60000 # 60秒(60000ミリ秒)
 
 # --- 指定した時間ごとに自動更新する設定 ---
@@ -80,7 +108,8 @@ st_autorefresh(interval=reload_interval, key="datarefresh")
 try:
     # データの読み込み
     # 自動更新が走るたびに、この get_gd_file が実行されて最新データが取得される
-    new_df, last_updated = get_gd_file(LOG_FILE)
+    new_df, last_updated = get_log_file(LOG_FILE)
+    monitored_codes = get_cache_file(CACHE_FILE)
 
     # 時間の整形(文字列から HH:MM:SS を抽出)
     new_df['time'] = pd.to_datetime(new_df['time'].str.strip('[]')).dt.strftime('%H:%M:%S')
@@ -88,7 +117,7 @@ try:
     # 取得成功時にデータをキャッシュに保存
     st.session_state.last_df = new_df
     st.write(f"読込ファイル最終更新時間: {last_updated}")
-    st.write(f"※{reload_interval / 1000}秒ごとに再読み込みします ")
+    st.write(f"※{int(reload_interval / 1000)}秒ごとに再読み込みします")
 
 except Exception as e:
     # 取得失敗時は、前回のデータを使いつつ警告を表示
@@ -99,7 +128,7 @@ df = st.session_state.last_df
 with st.sidebar:
     st.header("🔍 表示フィルタ")
     # text_inputの値を直接使わず、一度変数に受ける
-    input_val = st.text_input("キーワード入力（銘柄コードや銘柄名など）", placeholder="例: 6146", value=st.session_state.filter_query)
+    input_val = st.text_input("キーワード入力", placeholder="時間、銘柄コード、銘柄名など", value=st.session_state.filter_query)
     
     if st.button("フィルタ適用"):
         st.session_state.filter_query = input_val
@@ -124,7 +153,7 @@ id_map = {
     9: "⚙️ システムログ"
 }
 
-# 3. 各IDごとに表示
+# 各IDごとに表示
 for target_id, label in id_map.items():
     # IDで絞り込み、かつ最新を上にする (.iloc[::-1])
     filtered_df = display_df[display_df['id'] == target_id].iloc[::-1]
@@ -139,3 +168,13 @@ for target_id, label in id_map.items():
     with st.container(height=250):
         for _, row in filtered_df.iterrows():
             st.markdown(f"`{row['time']}` : {row['message']}")
+
+st.divider() # 区切り線
+st.header("📊 監視中の銘柄一覧")
+if monitored_codes:
+    # 銘柄コードをカンマ区切りで表示、またはタグのように表示
+    st.write(", ".join(map(str, monitored_codes)))
+    st.caption(f"合計: {len(monitored_codes)} 銘柄")
+else:
+    st.write("監視中の銘柄はありません。")
+    
