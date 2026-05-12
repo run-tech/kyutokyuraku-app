@@ -8,7 +8,7 @@ import pandas as pd
 import pickle
 
 CACHE_FILE = "19RT1ZT3nLrFLWi7BO89lV_URauXbfIxo" # cache_local_data.pkl
-LOG_FILE = "1eJJ5CeH676xaBl8YMPZmEsb1-1tuwRdM" # kyutokyuraku.log
+LOG_FILE = "1oMK080Fx5CjvlD918p-eWwfAWQ8HMPKj" # kyutokyuraku.log
 
 # =========================================================
 # 指定したGoogleDocumentのファイルをダウンロード
