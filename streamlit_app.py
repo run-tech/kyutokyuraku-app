@@ -115,12 +115,13 @@ with st.sidebar:
 
         # 時間指定
         time_options = [time(h, m) for h in range(8, 17) for m in [0, 15, 30, 45] if not (h==16 and m>0)]
-        start_time = st.sidebar.selectbox(
+        start_time = st.selectbox(
             "表示開始時刻", 
             options=time_options, 
             index=4, # 9:00をデフォルトにする場合
             format_func=lambda x: x.strftime("%H:%M")
         )
+        
         # 表示件数
         limit_count = st.number_input("表示件数（各カテゴリ）", min_value=10, max_value=5000, value=500, step=100)
 
