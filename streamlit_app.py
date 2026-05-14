@@ -45,7 +45,8 @@ def get_log_file(file_id):
         df = pd.read_csv(csv_data, header=None, names=['id', 'time', 'message'])
         
         # 時間の整形(文字列から HH:MM:SS を抽出)
-        df['time'] = pd.to_datetime(df['time'].str.strip('[]')).dt.strftime('%H:%M:%S')
+        df['raw_time'] = pd.to_datetime(df['time'].str.strip('[]')).dt.time
+        df['display_time'] = df['raw_time'].apply(lambda x: x.strftime('%H:%M:%S'))
         
         return df, last_updated
     else:
@@ -109,18 +110,16 @@ with st.sidebar:
     # 自動更新のON/OFF
     auto_refresh_enabled = st.checkbox("自動更新を有効にする", value=False)
     
-    st.header("🔍 表示フィルタ")
+    st.header("🔍 絞り込み条件")
     # text_inputの値を直接使わず、一度変数に受ける
-    input_val = st.text_input("キーワード入力", placeholder="銘柄コード、銘柄名など", value=st.session_state.filter_query)
+    search_query = st.text_input("キーワード入力", placeholder="銘柄コード、銘柄名など", value=st.session_state.filter_query)
 
-    col1, col2 = st.columns(2)
+    # 時間指定
+    start_time = st.time_input("表示開始時刻", time(9, 0)) # デフォルト 09:00
     
-    if col1.button("フィルタ適用"):
-        st.session_state.filter_query = input_val
-    if col2.button("クリア"):
-        st.session_state.filter_query = ""
-        st.rerun()
-
+    # 表示件数
+    limit_count = st.number_input("表示件数（各カテゴリ）", min_value=10, max_value=1000, value=500, step=10)
+    
 # =========================================================
 # 画面設定
 # =========================================================
@@ -136,63 +135,49 @@ if auto_refresh_enabled:
     # チェックボックスがONの時だけ実行
     st_autorefresh(interval=reload_interval, key="datarefresh")
 
-# --- データ取得処理 ---
+# --- データ取得・表示処理 ---
 try:
-    # データの読み込み
-    # 自動更新が走るたびに、この get_gd_file が実行されて最新データが取得される
-    new_df, last_updated = get_log_file(LOG_FILE)
-    monitored_codes = get_cache_file(CACHE_FILE)
+    df, last_updated = get_processed_data(LOG_FILE)
+    codes = get_monitored_codes(CACHE_FILE)
+
+    st.write(f"最終更新: {last_updated} ／ 全 {len(df):,} 行")
+
+    # --- フィルタリング処理 ---
+    # 1. 時間で絞り込み
+    filtered_df = df[df['raw_time'] >= start_time]
     
-    # 取得成功時にデータをキャッシュに保存
-    st.session_state.last_df = new_df
-    st.write(f"読込ファイル最終更新時間: {last_updated}")
-    st.write(f"※自動更新をオンにすると{int(reload_interval / 1000)}秒ごとに再読み込みします")
+    # 2. キーワードで絞り込み
+    if search_query:
+        filtered_df = filtered_df[filtered_df['message'].str.contains(search_query, case=False, na=False)]
+
+    # --- カテゴリ別表示 ---
+    id_map = {1: "🔥 急騰急落", 2: "📈 傾向", 3: "📊 テクニカル", 9: "⚙️ システム"}
+    
+    for target_id, label in id_map.items():
+        # IDで絞り込み、最新順にする
+        cat_df = filtered_df[filtered_df['id'] == target_id].iloc[::-1]
+        
+        # 3. 表示件数を制限（ここで高速化）
+        display_df = cat_df.head(limit_count)
+        
+        st.subheader(f"{label} (最新 {len(display_df)} 件)")
+        
+        if display_df.empty:
+            st.caption("該当データなし")
+            continue
+
+        with st.container(height=250):
+            # 文字列結合して一気に表示するとさらに速いですが、
+            # 個別にマークダウンで出す場合は head() で件数を絞るのが最も効きます
+            for _, row in display_df.iterrows():
+                st.markdown(f"`{row['display_time']}` : {row['message']}")
+
+    st.divider()  # 区切り線
+
+
+    st.header("📊 監視銘柄")
+    st.write(", ".join(map(str, codes)) if codes else "監視中の銘柄はありません。")    
+    st.caption(f"合計: {len(codes)} 銘柄")
 
 except Exception as e:
-    # 取得失敗時は、前回のデータを使いつつ警告を表示
-    st.warning(f"最新データの取得に失敗しました（前回のデータを表示中）: {e}")
-
-# --- 取得データのフィルタリング ---
-df = st.session_state.last_df
-current_filter = st.session_state.filter_query
-
-if current_filter:
-    display_df = df[df['message'].str.contains(current_filter, case=False, na=False)]
-    st.info(f"「{current_filter}」で絞り込み中")
-else:
-    display_df = df.copy()
-
-# --- IDと表示名のマッピング定義 ---
-id_map = {
-    1: "🔥 急騰急落の情報",
-    2: "📈 傾向の情報",
-    3: "📊 テクニカル情報",
-    9: "⚙️ システムログ"
-}
-
-# --- 各IDごとにエリアを分けて表示 ---
-for target_id, label in id_map.items():
-    # IDで絞り込み、かつ最新を上にする (.iloc[::-1])
-    filtered_df = display_df[display_df['id'] == target_id].iloc[::-1]
-    st.subheader(label)
-    
-    # 該当データがない場合の表示
-    if filtered_df.empty:
-        st.caption("該当するデータはありません。")
-        continue
-
-    with st.container(height=250):
-        for _, row in filtered_df.iterrows():
-            st.markdown(f"`{row['time']}` : {row['message']}")
-
-st.divider() # 区切り線
-
-# --- 監視銘柄コードを一覧で表示 ---
-st.header("📊 監視中の銘柄一覧")
-if monitored_codes:
-    # 銘柄コードをカンマ区切りで表示、またはタグのように表示
-    st.write(", ".join(map(str, monitored_codes)))
-    st.caption(f"合計: {len(monitored_codes)} 銘柄")
-else:
-    st.write("監視中の銘柄はありません。")
-    
+    st.error(f"データ読み込みエラー: {e}")
