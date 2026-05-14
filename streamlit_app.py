@@ -21,7 +21,6 @@ def get_gd_data(file_id):
 # =========================================================
 # ログファイル取得
 # =========================================================
-# @st.cache_data(ttl=60) # 60秒間はネットから落とさずメモリのデータを使い回す
 def get_log_file(file_id):
     response = get_gd_data(file_id)
     
@@ -55,7 +54,6 @@ def get_log_file(file_id):
 # =========================================================
 # GoogleDocumentからキャッシュファイル取得
 # =========================================================
-# @st.cache_data(ttl=600) # 頻繁に変わらないので10分間はネットから落とさずメモリのデータを使い回す
 def get_cache_file(file_id):
     response = get_gd_data(file_id)
     
@@ -137,8 +135,8 @@ if auto_refresh_enabled:
 
 # --- データ取得・表示処理 ---
 try:
-    df, last_updated = get_processed_data(LOG_FILE)
-    codes = get_monitored_codes(CACHE_FILE)
+    df, last_updated = get_log_file(LOG_FILE)
+    codes = get_cache_file(CACHE_FILE)
 
     st.write(f"最終更新: {last_updated} ／ 全 {len(df):,} 行")
 
