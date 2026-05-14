@@ -21,7 +21,7 @@ def get_gd_data(file_id):
 # =========================================================
 # ログファイル取得
 # =========================================================
-@st.cache_data(ttl=60) # 60秒間はネットから落とさずメモリのデータを使い回す
+# @st.cache_data(ttl=60) # 60秒間はネットから落とさずメモリのデータを使い回す
 def get_log_file(file_id):
     response = get_gd_data(file_id)
     
@@ -45,7 +45,7 @@ def get_log_file(file_id):
         df = pd.read_csv(csv_data, header=None, names=['id', 'time', 'message'])
         
         # 時間の整形(文字列から HH:MM:SS を抽出)
-        df['time'] = pd.to_datetime(new_df['time'].str.strip('[]')).dt.strftime('%H:%M:%S')
+        df['time'] = pd.to_datetime(df['time'].str.strip('[]')).dt.strftime('%H:%M:%S')
         
         return df, last_updated
     else:
@@ -54,7 +54,7 @@ def get_log_file(file_id):
 # =========================================================
 # GoogleDocumentからキャッシュファイル取得
 # =========================================================
-@st.cache_data(ttl=600) # 頻繁に変わらないので10分間はネットから落とさずメモリのデータを使い回す
+# @st.cache_data(ttl=600) # 頻繁に変わらないので10分間はネットから落とさずメモリのデータを使い回す
 def get_cache_file(file_id):
     response = get_gd_data(file_id)
     
