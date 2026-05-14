@@ -86,7 +86,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # =========================================================
-# GUI メイン画面
+# 初期設定
 # =========================================================
 # --- セッション状態の初期化 ---
 if "filter_query" not in st.session_state:
@@ -95,6 +95,29 @@ if "last_df" not in st.session_state:
     # 最初の読み込みで失敗してもエラーにならないよう空のDataFrameを作っておく
     st.session_state.last_df = pd.DataFrame(columns=['id', 'time', 'message'])
 
+# =========================================================
+# サイドバーの設定
+# =========================================================
+with st.sidebar:
+    st.header("⚙️ 設定")
+    # 自動更新のON/OFF
+    auto_refresh_enabled = st.checkbox("自動更新を有効にする", value=True)
+    
+    st.header("🔍 表示フィルタ")
+    # text_inputの値を直接使わず、一度変数に受ける
+    input_val = st.text_input("キーワード入力", placeholder="銘柄コード、銘柄名など", value=st.session_state.filter_query)
+
+    col1, col2 = st.columns(2)
+    
+    if col1.button("フィルタ適用"):
+        st.session_state.filter_query = input_val
+    if col2.button("クリア"):
+        st.session_state.filter_query = ""
+        st.rerun()
+
+# =========================================================
+# 画面設定
+# =========================================================
 # --- タイトル ---
 st.title(":chart: 株価情報モニタ（仮）")
 
@@ -103,8 +126,11 @@ reload_interval = 60000 # 60秒(60000ミリ秒)
 
 # --- 指定した時間ごとに自動更新する設定 ---
 # keyは任意の文字列でOK
-st_autorefresh(interval=reload_interval, key="datarefresh")
+if auto_refresh_enabled:
+    # チェックボックスがONの時だけ実行
+    st_autorefresh(interval=reload_interval, key="datarefresh")
 
+# --- データ取得処理 ---
 try:
     # データの読み込み
     # 自動更新が走るたびに、この get_gd_file が実行されて最新データが取得される
@@ -123,20 +149,8 @@ except Exception as e:
     # 取得失敗時は、前回のデータを使いつつ警告を表示
     st.warning(f"最新データの取得に失敗しました（前回のデータを表示中）: {e}")
 
+# --- 取得データのフィルタリング ---
 df = st.session_state.last_df
-
-with st.sidebar:
-    st.header("🔍 表示フィルタ")
-    # text_inputの値を直接使わず、一度変数に受ける
-    input_val = st.text_input("キーワード入力", placeholder="銘柄コード、銘柄名など", value=st.session_state.filter_query)
-    
-    if st.button("フィルタ適用"):
-        st.session_state.filter_query = input_val
-    
-    if st.button("クリア"):
-        st.session_state.filter_query = ""
-        st.rerun()
-
 current_filter = st.session_state.filter_query
 
 if current_filter:
@@ -145,7 +159,7 @@ if current_filter:
 else:
     display_df = df.copy()
 
-# IDと表示名のマッピング定義
+# --- IDと表示名のマッピング定義 ---
 id_map = {
     1: "🔥 急騰急落の情報",
     2: "📈 傾向の情報",
@@ -153,11 +167,10 @@ id_map = {
     9: "⚙️ システムログ"
 }
 
-# 各IDごとに表示
+# --- 各IDごとにエリアを分けて表示 ---
 for target_id, label in id_map.items():
     # IDで絞り込み、かつ最新を上にする (.iloc[::-1])
     filtered_df = display_df[display_df['id'] == target_id].iloc[::-1]
-    
     st.subheader(label)
     
     # 該当データがない場合の表示
@@ -170,6 +183,8 @@ for target_id, label in id_map.items():
             st.markdown(f"`{row['time']}` : {row['message']}")
 
 st.divider() # 区切り線
+
+# --- 監視銘柄コードを一覧で表示 ---
 st.header("📊 監視中の銘柄一覧")
 if monitored_codes:
     # 銘柄コードをカンマ区切りで表示、またはタグのように表示
