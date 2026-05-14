@@ -122,7 +122,7 @@ with st.sidebar:
         format_func=lambda x: x.strftime("%H:%M")
     )
     # 表示件数
-    limit_count = st.number_input("表示件数（各カテゴリ）", min_value=10, max_value=1000, value=500, step=10)
+    limit_count = st.number_input("表示件数（各カテゴリ）", min_value=10, max_value=5000, value=500, step=100)
     
 # =========================================================
 # 画面設定
