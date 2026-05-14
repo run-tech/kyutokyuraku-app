@@ -123,7 +123,7 @@ with st.sidebar:
         )
         
         # 表示件数
-        limit_count = st.number_input("表示件数（各カテゴリ）", min_value=10, max_value=5000, value=500, step=100)
+        limit_count = st.number_input("表示件数（各カテゴリで100-1000件）", min_value=100, max_value=1000, value=500, step=100)
 
         # フォーム確定用のボタン（これが押されるまで反映されない）
         submit_button = st.form_submit_button(label='条件を適用して検索')
