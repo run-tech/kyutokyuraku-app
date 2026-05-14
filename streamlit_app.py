@@ -21,6 +21,7 @@ def get_gd_data(file_id):
 # =========================================================
 # ログファイル取得
 # =========================================================
+@st.cache_data(ttl=60) # 60秒間はネットから落とさずメモリのデータを使い回す
 def get_log_file(file_id):
     response = get_gd_data(file_id)
     
@@ -42,6 +43,10 @@ def get_log_file(file_id):
         # 文字コードが不明な場合は utf-8 や shift_jis を試してください
         csv_data = StringIO(response.text)
         df = pd.read_csv(csv_data, header=None, names=['id', 'time', 'message'])
+        
+        # 時間の整形(文字列から HH:MM:SS を抽出)
+        df['time'] = pd.to_datetime(new_df['time'].str.strip('[]')).dt.strftime('%H:%M:%S')
+        
         return df, last_updated
     else:
         raise Exception(f"ファイルの取得に失敗しました。ステータスコード: {response.status_code}")
@@ -49,6 +54,7 @@ def get_log_file(file_id):
 # =========================================================
 # GoogleDocumentからキャッシュファイル取得
 # =========================================================
+@st.cache_data(ttl=600) # 頻繁に変わらないので10分間はネットから落とさずメモリのデータを使い回す
 def get_cache_file(file_id):
     response = get_gd_data(file_id)
     
@@ -136,9 +142,6 @@ try:
     # 自動更新が走るたびに、この get_gd_file が実行されて最新データが取得される
     new_df, last_updated = get_log_file(LOG_FILE)
     monitored_codes = get_cache_file(CACHE_FILE)
-
-    # 時間の整形(文字列から HH:MM:SS を抽出)
-    new_df['time'] = pd.to_datetime(new_df['time'].str.strip('[]')).dt.strftime('%H:%M:%S')
     
     # 取得成功時にデータをキャッシュに保存
     st.session_state.last_df = new_df
