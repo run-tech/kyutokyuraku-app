@@ -101,7 +101,7 @@ if "last_df" not in st.session_state:
 with st.sidebar:
     st.header("⚙️ 設定")
     # 自動更新のON/OFF
-    auto_refresh_enabled = st.checkbox("自動更新を有効にする", value=True)
+    auto_refresh_enabled = st.checkbox("自動更新を有効にする", value=False)
     
     st.header("🔍 表示フィルタ")
     # text_inputの値を直接使わず、一度変数に受ける
