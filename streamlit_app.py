@@ -108,21 +108,24 @@ with st.sidebar:
     # 自動更新のON/OFF
     auto_refresh_enabled = st.checkbox("自動更新を有効にする", value=False)
     
-    st.header("🔍 絞り込み条件")
-    # text_inputの値を直接使わず、一度変数に受ける
-    search_query = st.text_input("キーワード入力", placeholder="銘柄コード、銘柄名など", value=st.session_state.filter_query)
+    with st.form(key='search_form'):
+        st.header("🔍 絞り込み条件")
+        # text_inputの値を直接使わず、一度変数に受ける
+        search_query = st.text_input("キーワード入力", placeholder="銘柄コード、銘柄名など", value=st.session_state.filter_query)
 
-    # 時間指定
-    # start_time = st.time_input("表示開始時刻", time(9, 0)) # デフォルト 09:00
-    time_options = [time(h, m) for h in range(8, 17) for m in [0, 15, 30, 45] if not (h==16 and m>0)]
-    start_time = st.sidebar.selectbox(
-        "表示開始時刻", 
-        options=time_options, 
-        index=4, # 9:00をデフォルトにする場合
-        format_func=lambda x: x.strftime("%H:%M")
-    )
-    # 表示件数
-    limit_count = st.number_input("表示件数（各カテゴリ）", min_value=10, max_value=5000, value=500, step=100)
+        # 時間指定
+        time_options = [time(h, m) for h in range(8, 17) for m in [0, 15, 30, 45] if not (h==16 and m>0)]
+        start_time = st.sidebar.selectbox(
+            "表示開始時刻", 
+            options=time_options, 
+            index=4, # 9:00をデフォルトにする場合
+            format_func=lambda x: x.strftime("%H:%M")
+        )
+        # 表示件数
+        limit_count = st.number_input("表示件数（各カテゴリ）", min_value=10, max_value=5000, value=500, step=100)
+
+        # フォーム確定用のボタン（これが押されるまで反映されない）
+        submit_button = st.form_submit_button(label='条件を適用して検索')
     
 # =========================================================
 # 画面設定
@@ -145,7 +148,8 @@ try:
     codes = get_cache_file(CACHE_FILE)
 
     st.write(f"最終更新: {last_updated} ／ 全 {len(df):,} 行")
-
+    st.write(f"※自動更新をオンにすると{int(reload_interval / 1000)}秒ごとに再読み込みします")
+    
     # --- フィルタリング処理 ---
     # 1. 時間で絞り込み
     filtered_df = df[df['raw_time'] >= start_time]
