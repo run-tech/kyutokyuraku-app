@@ -143,7 +143,7 @@ try:
     # 取得成功時にデータをキャッシュに保存
     st.session_state.last_df = new_df
     st.write(f"読込ファイル最終更新時間: {last_updated}")
-    st.write(f"※{int(reload_interval / 1000)}秒ごとに再読み込みします")
+    st.write(f"※自動更新をオンにすると{int(reload_interval / 1000)}秒ごとに再読み込みします")
 
 except Exception as e:
     # 取得失敗時は、前回のデータを使いつつ警告を表示
