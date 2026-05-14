@@ -113,8 +113,14 @@ with st.sidebar:
     search_query = st.text_input("キーワード入力", placeholder="銘柄コード、銘柄名など", value=st.session_state.filter_query)
 
     # 時間指定
-    start_time = st.time_input("表示開始時刻", time(9, 0)) # デフォルト 09:00
-    
+    # start_time = st.time_input("表示開始時刻", time(9, 0)) # デフォルト 09:00
+    time_options = [time(h, m) for h in range(8, 17) for m in [0, 15, 30, 45] if not (h==16 and m>0)]
+    start_time = st.sidebar.selectbox(
+        "表示開始時刻", 
+        options=time_options, 
+        index=4, # 9:00をデフォルトにする場合
+        format_func=lambda x: x.strftime("%H:%M")
+    )
     # 表示件数
     limit_count = st.number_input("表示件数（各カテゴリ）", min_value=10, max_value=1000, value=500, step=10)
     
