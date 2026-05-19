@@ -136,7 +136,7 @@ st.title(":chart: 株価情報モニタ（仮）")
 
 # --- 変数 ---
 reload_interval = 60000 # 60秒(60000ミリ秒)
-
+st.write(f"本日はPCメンテにつき急騰急落監視はお休みになります")
 # --- 指定した時間ごとに自動更新する設定 ---
 # keyは任意の文字列でOK
 if auto_refresh_enabled:
